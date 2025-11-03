@@ -7,7 +7,7 @@ class hangman:
     gameboard = []
     gameboard_finished = []
     guess = ''
-    guess_archieve = []
+    guess_archive = []
     lives = []
     end_state = False
     word_list = []
@@ -40,21 +40,21 @@ class hangman:
         self.gameboard[location] = guess
 
     def set_guess(self, player_guess):
-        if player_guess in self.guess_archieve:
+        if player_guess in self.guess_archive:
             print("You have already tried to play " + player_guess)
         elif player_guess in self.gameboard_finished:
             for position, char in enumerate(self.gameboard_finished):
                 if char == player_guess:
                     self.set_move(player_guess, position)
-            self.guess_archieve.append(player_guess)
+            self.guess_archive.append(player_guess)
         else:
             self.lives.append('x')
-            self.guess_archieve.append(player_guess)
+            self.guess_archive.append(player_guess)
 
     def get_eg_status(self):
-        if len(self.lives) == 5:
+        if len(self.lives) == 6:
             os.system('cls' if os.name == 'nt' else 'clear')
-            self.end_state = True
+            self.end_state = True 
             print("\t \t---------GAME OVER---------")
             print("Answer: \t" + ''.join(self.gameboard_finished))
             print("Thanks for playing!")
@@ -80,17 +80,52 @@ class hangman:
         print("==============================================")
         print("\t" + ' '.join(self.gameboard))
         print("  Lives: \t" + ''.join(self.lives))
-        print("Guesses: \t" + ', '.join(self.guess_archieve))
+        print("Guesses: \t" + ', '.join(self.guess_archive))
         print("==============================================")
+    def get_state(self):
+        """Return current state info for RL agent."""
+        return {
+            "masked_word": ''.join(self.gameboard),
+            "guessed_letters": self.guess_archive.copy(),
+            "lives_left": 6 - len(self.lives),
+            "end_state": self.end_state
+        }
+
+    def step(self, guess):
+        """Allow RL agent to take a guess and get (new_state, reward, done)."""
+        prev_lives = len(self.lives)
+        prev_board = ''.join(self.gameboard)
+        self.set_guess(guess)
+        self.get_eg_status()
+        new_board = ''.join(self.gameboard)
+        done = self.end_state
+
+        # Define rewards
+        if done and self.gameboard == self.gameboard_finished:
+            reward = +100
+        elif done:
+            reward = -100
+        elif new_board != prev_board:
+            reward = +10
+        elif len(self.lives) > prev_lives:
+            reward = -10
+        else:
+            reward = -1
+
+        new_state = self.get_state()
+        return new_state, reward, done
+
 
 # ---------- MAIN EXECUTION ----------
-game = hangman()
-game.set_Word()
-game.set_create_board(game.played_word)
-game.set_finished_board(game.played_word)
-game.set_Display()
-
-while not game.end_state:
-    game.get_user_guess()
+# ---------- MAIN EXECUTION ----------
+if __name__ == "__main__":
+    game = hangman()
+    game.set_Word()
+    game.set_create_board(game.played_word)
+    game.set_finished_board(game.played_word)
     game.set_Display()
-    game.get_eg_status()
+
+    while not game.end_state:
+        game.get_user_guess()
+        game.set_Display()
+        game.get_eg_status()
