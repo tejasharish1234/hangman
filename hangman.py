@@ -2,7 +2,7 @@ import os
 import random
 
 class hangman:
-    def __init__(self):
+    def __init__(self, game_number=0):
         self.played_word = ""
         self.gameboard = []
         self.gameboard_finished = []
@@ -11,13 +11,12 @@ class hangman:
         self.lives = []
         self.end_state = False
         self.word_list = []
+        self.game_number = game_number
 
         try:
             with open("Data/corpus.txt", "r") as f:
-                for i, line in enumerate(f):
-                    self.word_list.append(line.strip())
-                    if i == 9:
-                        break
+                self.word_list.extend(line.strip() for line in f)
+                    
         except FileNotFoundError:
             print("Error: corpus.txt not found in Data folder.")
             self.word_list = ['default', 'backup', 'words', 'for', 'hangman']
@@ -33,7 +32,7 @@ class hangman:
         self.end_state = False
 
     def set_Word(self):
-        word = random.choice(self.word_list)
+        word = self.word_list[self.game_number].lower()
         self.played_word = word
 
     def set_finished_board(self, word):
@@ -57,9 +56,7 @@ class hangman:
         self.guess_archive.append(player_guess)
 
     def get_eg_status(self):
-        if len(self.lives) >= 6:
-            self.end_state = True
-        elif self.gameboard == self.gameboard_finished:
+        if len(self.lives) >= 6 or self.gameboard == self.gameboard_finished:
             self.end_state = True
 
     def get_state(self):
@@ -71,24 +68,26 @@ class hangman:
         }
 
     def step(self, guess):
-        prev_lives = len(self.lives)
-        prev_board = ''.join(self.gameboard)
-
+        prev_correct = self.gameboard.count('_')
         self.set_guess(guess)
         self.get_eg_status()
 
-        new_board = ''.join(self.gameboard)
+        correct_after = self.gameboard.count('_')
+        revealed_letters = prev_correct - correct_after
+
         done = self.end_state
+        reward = 0
 
         if done and self.gameboard == self.gameboard_finished:
-            reward = +100
+            reward = +200
         elif done:
             reward = -100
-        elif new_board != prev_board:
-            reward = +10
-        elif len(self.lives) > prev_lives:
-            reward = -10
+        elif revealed_letters > 0:
+            reward = +20 * revealed_letters  # encourage multiple corrects
+        elif guess in self.guess_archive:
+            reward = -15  # penalize repeats
         else:
-            reward = -1
+            reward = -10  # wrong guess
 
         return self.get_state(), reward, done
+

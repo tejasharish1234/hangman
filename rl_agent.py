@@ -10,8 +10,10 @@ class RLAgent:
         self.Q = {}
 
     def _encode_state(self, masked_word, guessed_letters):
-        guessed = ''.join(sorted(guessed_letters))
-        return (masked_word, guessed)
+        guessed_count = len(guessed_letters)
+        masked_pattern = masked_word.replace("_", "X")  # anonymize blanks
+        return (masked_pattern, guessed_count)
+
 
     def select_action(self, masked_word, guessed_letters, hmm_probs):
         available = [ch for ch in string.ascii_lowercase if ch not in guessed_letters]
